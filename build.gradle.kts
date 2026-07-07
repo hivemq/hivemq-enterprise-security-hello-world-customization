@@ -9,6 +9,12 @@ description = "Hello World Customization for the HiveMQ Enterprise Security Exte
 
 java {
     toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+tasks.compileJava {
+    javaCompiler = javaToolchains.compilerFor {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
@@ -20,17 +26,6 @@ repositories {
 dependencies {
     implementation(libs.hivemq.enterpriseSecurityExtension.customizationSdk)
     compileOnly(libs.jetbrains.annotations)
-}
-
-tasks {
-    compileJava {
-        sourceCompatibility = JavaVersion.VERSION_11.toString()
-        targetCompatibility = JavaVersion.VERSION_11.toString()
-    }
-    compileTestJava {
-        sourceCompatibility = JavaVersion.VERSION_21.toString()
-        targetCompatibility = JavaVersion.VERSION_21.toString()
-    }
 }
 
 @Suppress("UnstableApiUsage")
