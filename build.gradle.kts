@@ -1,7 +1,7 @@
 plugins {
     java
     alias(libs.plugins.defaults)
-    alias(libs.plugins.license)
+    alias(libs.plugins.spotless)
 }
 
 group = "com.hivemq.extensions.enterprise.security.customizations"
@@ -62,7 +62,8 @@ tasks.withType<Jar>().configureEach {
     )
 }
 
-license {
-    header = rootDir.resolve("HEADER")
-    mapping("java", "SLASHSTAR_STYLE")
+spotless {
+    java {
+        licenseHeaderFile(rootDir.resolve("HEADER"))
+    }
 }
