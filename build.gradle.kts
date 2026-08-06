@@ -33,6 +33,11 @@ testing {
     suites {
         withType<JvmTestSuite> {
             useJUnitJupiter(libs.versions.junit.jupiter)
+            targets.configureEach {
+                testTask {
+                    jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
+                }
+            }
         }
         "test"(JvmTestSuite::class) {
             dependencies {
