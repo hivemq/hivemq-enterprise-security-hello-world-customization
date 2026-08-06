@@ -19,13 +19,14 @@ import com.hivemq.client.mqtt.MqttClient;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5BlockingClient;
 import com.hivemq.client.mqtt.mqtt5.exceptions.Mqtt5SubAckException;
-import org.assertj.core.api.Assertions;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import org.mockserver.client.MockServerClient;
 import org.slf4j.event.Level;
+import org.testcontainers.containers.MockServerContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.hivemq.HiveMQContainer;
 import org.testcontainers.images.builder.Transferable;
@@ -33,15 +34,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-import software.xdev.mockserver.client.MockServerClient;
-import software.xdev.testcontainers.mockserver.containers.MockServerContainer;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
-import static software.xdev.mockserver.model.HttpRequest.request;
-import static software.xdev.mockserver.model.HttpResponse.response;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockserver.model.HttpRequest.request;
+import static org.mockserver.model.HttpResponse.response;
 
 /**
  * @author Mario Schwede
@@ -58,26 +58,27 @@ class ExternalRolesCommonPreprocessorTest {
 
     @Container
     private final @NotNull MockServerContainer mockServer =
-            new MockServerContainer().withNetworkAliases("mockserver").withNetwork(network);
+            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:mockserver-7.5.0")) //
+                    .withNetworkAliases("mockserver").withNetwork(network);
 
     @Container
-    private final @NotNull HiveMQContainer hivemq = new HiveMQContainer( //
-            DockerImageName.parse("hivemq/hivemq4").withTag("latest")) //
-            .withLogLevel(Level.DEBUG)
-            .withNetwork(network)
-            .withNetworkAliases("hivemq")
-            .withEnv("ROLES_ENDPOINT", "http://mockserver:" + MockServerContainer.PORT)
-            .withLogConsumer(outputFrame -> System.out.print("HIVEMQ: " + outputFrame.getUtf8String()))
-            .withCopyFileToContainer(MountableFile.forClasspathResource("/external-roles-config.xml"),
-                    ESE_HOME_FOLDER + "/conf/config.xml")
-            .withCopyFileToContainer(MountableFile.forClasspathResource("/external-roles-file-realm.xml"),
-                    ESE_HOME_FOLDER + "/conf/file-realm.xml")
-            .withCopyToContainer(externalRolesCommonPreprocessor(),
-                    ESE_HOME_FOLDER +
-                            "/customizations/" +
-                            ExternalRolesCommonPreprocessor.class.getSimpleName().toLowerCase(Locale.ROOT) +
-                            ".jar")
-            .withoutPrepackagedExtensions("hivemq-allow-all-extension");
+    private final @NotNull HiveMQContainer hivemq =
+            new HiveMQContainer(DockerImageName.parse("hivemq/hivemq4").withTag("latest")) //
+                    .withLogLevel(Level.DEBUG)
+                    .withNetwork(network)
+                    .withNetworkAliases("hivemq")
+                    .withEnv("ROLES_ENDPOINT", "http://mockserver:" + MockServerContainer.PORT)
+                    .withLogConsumer(outputFrame -> System.out.print("HIVEMQ: " + outputFrame.getUtf8String()))
+                    .withCopyFileToContainer(MountableFile.forClasspathResource("/external-roles-config.xml"),
+                            ESE_HOME_FOLDER + "/conf/config.xml")
+                    .withCopyFileToContainer(MountableFile.forClasspathResource("/external-roles-file-realm.xml"),
+                            ESE_HOME_FOLDER + "/conf/file-realm.xml")
+                    .withCopyToContainer(externalRolesCommonPreprocessor(),
+                            ESE_HOME_FOLDER +
+                                    "/customizations/" +
+                                    ExternalRolesCommonPreprocessor.class.getSimpleName().toLowerCase(Locale.ROOT) +
+                                    ".jar")
+                    .withoutPrepackagedExtensions("hivemq-allow-all-extension");
 
     private static @NotNull Transferable externalRolesCommonPreprocessor() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -91,8 +92,7 @@ class ExternalRolesCommonPreprocessorTest {
     @Test
     void authorize() throws Exception {
         hivemq.enableExtension(ESE_NAME, ESE_ID);
-
-        try (MockServerClient mockServerClient = new MockServerClient( //
+        try (final MockServerClient mockServerClient = new MockServerClient( //
                 mockServer.getHost(), mockServer.getServerPort())) {
             mockServerClient.when(request("/").withQueryStringParameter("user", "my-user").withMethod("GET"))
                     .respond(response().withBody("external-role-1,external-role-2"));
@@ -103,10 +103,10 @@ class ExternalRolesCommonPreprocessorTest {
             mqttClient.subscribeWith().topicFilter("external-role-1").qos(MqttQos.AT_MOST_ONCE).send();
             mqttClient.subscribeWith().topicFilter("external-role-2").qos(MqttQos.AT_MOST_ONCE).send();
 
-            Assertions.assertThatThrownBy(() -> mqttClient.subscribeWith()
-                            .topicFilter("unknown-role")
-                            .qos(MqttQos.AT_MOST_ONCE)
-                            .send()) //
+            assertThatThrownBy(() -> mqttClient.subscribeWith()
+                    .topicFilter("unknown-role")
+                    .qos(MqttQos.AT_MOST_ONCE)
+                    .send()) //
                     .isInstanceOf(Mqtt5SubAckException.class).hasMessage("SUBACK contains only Error Codes");
 
             mockServerClient.verify(1, request("/") //
@@ -114,7 +114,7 @@ class ExternalRolesCommonPreprocessorTest {
         }
     }
 
-    private Mqtt5BlockingClient connect() {
+    private @NotNull Mqtt5BlockingClient connect() {
         final Mqtt5BlockingClient client = MqttClient.builder()
                 .useMqttVersion5()
                 .serverPort(hivemq.getMqttPort())

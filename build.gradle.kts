@@ -43,8 +43,8 @@ testing {
             dependencies {
                 implementation(libs.assertj)
                 implementation(libs.hivemq.mqttClient)
-                implementation(libs.mockserverNeoLight.client)
-                implementation(libs.mockserverNeoLight.testcontainers)
+                implementation(libs.mockserver.client)
+                implementation(libs.testcontainers.mockserver)
                 implementation(libs.shrinkwrap.api)
                 runtimeOnly(libs.shrinkwrap.impl)
                 implementation(libs.testcontainers.hivemq)
