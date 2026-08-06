@@ -46,29 +46,20 @@ class IpAllowlistMqttPreprocessorTest {
     private static final @NotNull String ESE_NAME = "HiveMQ Enterprise Security Extension";
     private static final @NotNull String ESE_HOME_FOLDER = "/opt/hivemq/extensions/" + ESE_ID;
 
-    private final @NotNull HiveMQContainer hivemq = new HiveMQContainer( //
-            DockerImageName.parse("hivemq/hivemq4").withTag("latest")) //
-            .withLogLevel(Level.DEBUG)
-            .withLogConsumer(outputFrame -> System.out.print("HIVEMQ: " + outputFrame.getUtf8String()))
-            .withCopyFileToContainer(MountableFile.forClasspathResource("/ip-allowlist-config.xml"),
-                    ESE_HOME_FOLDER + "/conf/config.xml")
-            .withCopyFileToContainer(MountableFile.forClasspathResource("/ip-allowlist-file-realm.xml"),
-                    ESE_HOME_FOLDER + "/conf/file-realm.xml")
-            .withCopyToContainer(ipAllowlistMqttPreprocessor(),
-                    ESE_HOME_FOLDER +
-                            "/customizations/" +
-                            IpAllowlistMqttPreprocessor.class.getSimpleName().toLowerCase(Locale.ROOT) +
-                            ".jar")
-            .withoutPrepackagedExtensions("hivemq-allow-all-extension");
-
-    private static @NotNull Transferable ipAllowlistMqttPreprocessor() {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        ShrinkWrap.create(JavaArchive.class)
-                .addClasses(IpAllowlistMqttPreprocessor.class)
-                .as(ZipExporter.class)
-                .exportTo(out);
-        return Transferable.of(out.toByteArray());
-    }
+    private final @NotNull HiveMQContainer hivemq =
+            new HiveMQContainer(DockerImageName.parse("hivemq/hivemq4").withTag("latest")) //
+                    .withLogLevel(Level.DEBUG)
+                    .withLogConsumer(outputFrame -> System.out.print("HIVEMQ: " + outputFrame.getUtf8String()))
+                    .withCopyFileToContainer(MountableFile.forClasspathResource("/ip-allowlist-config.xml"),
+                            ESE_HOME_FOLDER + "/conf/config.xml")
+                    .withCopyFileToContainer(MountableFile.forClasspathResource("/ip-allowlist-file-realm.xml"),
+                            ESE_HOME_FOLDER + "/conf/file-realm.xml")
+                    .withCopyToContainer(ipAllowlistMqttPreprocessor(),
+                            ESE_HOME_FOLDER +
+                                    "/customizations/" +
+                                    IpAllowlistMqttPreprocessor.class.getSimpleName().toLowerCase(Locale.ROOT) +
+                                    ".jar")
+                    .withoutPrepackagedExtensions("hivemq-allow-all-extension");
 
     @AfterEach
     void afterEach() {
@@ -77,7 +68,7 @@ class IpAllowlistMqttPreprocessorTest {
 
     @Test
     void allowed() throws Exception {
-        // Gateway IP of the docker bridge
+        // gateway IP of the docker bridge
         hivemq.withEnv("ALLOWED_CLIENT_IP", "172.17.0.1");
         hivemq.start();
 
@@ -88,7 +79,7 @@ class IpAllowlistMqttPreprocessorTest {
 
     @Test
     void notAllowed() throws Exception {
-        // Unknown IP
+        // unknown IP
         hivemq.withEnv("ALLOWED_CLIENT_IP", "173.17.0.1");
         hivemq.start();
 
@@ -97,7 +88,7 @@ class IpAllowlistMqttPreprocessorTest {
                 .hasMessage("CONNECT failed as CONNACK contained an Error Code: NOT_AUTHORIZED.");
     }
 
-    private Mqtt5BlockingClient connect() {
+    private @NotNull Mqtt5BlockingClient connect() {
         final Mqtt5BlockingClient client = MqttClient.builder()
                 .useMqttVersion5()
                 .serverPort(hivemq.getMqttPort())
@@ -108,5 +99,14 @@ class IpAllowlistMqttPreprocessorTest {
                 .buildBlocking();
         client.connectWith().send();
         return client;
+    }
+
+    private static @NotNull Transferable ipAllowlistMqttPreprocessor() {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ShrinkWrap.create(JavaArchive.class)
+                .addClasses(IpAllowlistMqttPreprocessor.class)
+                .as(ZipExporter.class)
+                .exportTo(out);
+        return Transferable.of(out.toByteArray());
     }
 }
