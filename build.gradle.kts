@@ -35,6 +35,7 @@ testing {
             useJUnitJupiter(libs.versions.junit.jupiter)
             targets.configureEach {
                 testTask {
+                    // see https://netty.io/wiki/java-24-and-sun.misc.unsafe.html
                     jvmArgs("--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow")
                 }
             }
