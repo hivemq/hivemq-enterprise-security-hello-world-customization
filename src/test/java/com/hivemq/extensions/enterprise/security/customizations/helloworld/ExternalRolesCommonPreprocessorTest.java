@@ -58,7 +58,7 @@ class ExternalRolesCommonPreprocessorTest {
 
     @Container
     private final @NotNull MockServerContainer mockServer =
-            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:mockserver-7.5.0")) //
+            new MockServerContainer(DockerImageName.parse("mockserver/mockserver:mockserver-7.6.0")) //
                     .withNetworkAliases("mockserver").withNetwork(network);
 
     @Container
